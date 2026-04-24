@@ -11,7 +11,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
     
-    <title>مرصد المشاعر 2026 | Accurate Dashboard</title>
+    <title>مرصد المشاعر 2026 | Smart Dashboard</title>
 
     <!-- التقنيات -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -146,7 +146,7 @@
             const [loading, setLoading] = useState(true);
             const [lastUpdate, setLastUpdate] = useState('');
             const [search, setSearch] = useState('');
-            const [activeSubFilter, setActiveSubFilter] = useState('water');
+            const [activeSubFilter, setActiveSubFilter] = useState('all');
 
             const fetchAll = async (silent = false) => {
                 if (!silent) setLoading(true);
@@ -214,9 +214,7 @@
             useEffect(() => { fetchAll(); }, []);
 
             useEffect(() => { 
-                if (activeTab === 'muna') setActiveSubFilter('water');
-                else if (activeTab === 'arafat') setActiveSubFilter('closed');
-                else setActiveSubFilter('liaison');
+                setActiveSubFilter('all');
             }, [activeTab]);
 
             const stats = useMemo(() => {
@@ -229,6 +227,7 @@
 
             const filterSettings = useMemo(() => ({
                 muna: [
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.muna.length, bg: 'bg-slate-500' },
                     { id: 'water', label: 'المياه', icon: 'droplets', count: stats.muna[0], bg: 'bg-sky-500' },
                     { id: 'electricity', label: 'الكهرباء', icon: 'zap', count: stats.muna[1], bg: 'bg-amber-500' },
                     { id: 'appliances', label: 'الأجهزة', icon: 'settings', count: stats.muna[2], bg: 'bg-violet-500' },
@@ -236,6 +235,7 @@
                     { id: 'floors', label: 'الأرضيات', icon: 'layers', count: stats.muna[4], bg: 'bg-emerald-500' }
                 ],
                 arafat: [
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.arafat.length, bg: 'bg-slate-500' },
                     { id: 'closed', label: 'مغلق', icon: 'alert-octagon', count: stats.arafat[0], bg: 'bg-rose-500' },
                     { id: 'water', label: 'المياه', icon: 'droplets', count: stats.arafat[1], bg: 'bg-cyan-500' },
                     { id: 'pots', label: 'القدور', icon: 'soup', count: stats.arafat[2], bg: 'bg-green-500' },
@@ -243,19 +243,24 @@
                     { id: 'floors', label: 'الأرضية', icon: 'layers', count: stats.arafat[4], bg: 'bg-teal-500' }
                 ],
                 admin: [
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.admin.length, bg: 'bg-slate-500' },
                     { id: 'liaison', label: 'ضابط اتصال', icon: 'user-check', count: stats.admin[0], bg: 'bg-purple-600' },
                     { id: 'kerosene', label: 'الكيروسين', icon: 'fuel', count: stats.admin[1], bg: 'bg-blue-600' },
                     { id: 'commitment', label: 'ملف التعهد', icon: 'file-check', count: stats.admin[2], bg: 'bg-rose-600' }
                 ]
-            }), [stats]);
+            }), [stats, data]);
 
             const filteredData = useMemo(() => {
-                let base = [];
-                const query = search.toLowerCase();
-                if (activeTab === 'muna') base = data.muna.filter(d => d[activeSubFilter]?.includes('لا'));
-                else if (activeTab === 'arafat') base = data.arafat.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
-                else base = data.admin.filter(d => !d[activeSubFilter]);
+                let base = data[activeTab] || [];
+                
+                if (activeSubFilter !== 'all') {
+                    if (activeTab === 'muna') base = base.filter(d => d[activeSubFilter]?.includes('لا'));
+                    else if (activeTab === 'arafat') base = base.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
+                    else if (activeTab === 'admin') base = base.filter(d => !d[activeSubFilter]);
+                }
+                
                 if (!search) return base;
+                const query = search.toLowerCase();
                 return base.filter(d => d.name?.toLowerCase().includes(query) || d.id?.includes(query));
             }, [activeTab, data, activeSubFilter, search]);
 
@@ -373,7 +378,7 @@
                                         <div className="flex items-center gap-2 text-slate-400"><Icon name="clock" className="w-3.5 h-3.5" /><span className="text-[11px] font-bold uppercase">{item.time || 'DATA FEED'}</span></div>
                                     </div>
                                     <h4 className="text-xl font-black text-slate-900 leading-tight mb-2">{item.name}</h4>
-                                    <div className="flex items-center gap-2 mb-4 text-[10px] font-black text-indigo-600 bg-indigo-50 w-fit px-3 py-1 rounded-lg border border-indigo-100">
+                                    <div className="flex items-center gap-2 mb-4 text-[10px] font-black text-indigo-600 bg-indigo-50 w-fit px-3 py-1 rounded-lg border border-indigo-100 text-right">
                                         <Icon name="user-check" className="w-3.5 h-3.5" />
                                         <span>ضابط الاتصال: {targetOfficer}</span>
                                     </div>
@@ -404,7 +409,7 @@
                                                 <StatusRow label="ملف التعهد" value={item.commitment} />
                                             </div>
                                         )}
-                                        {item.observer && <div className="mt-4 pt-4 border-t border-slate-200 text-[11px] font-bold text-slate-400 italic">رصد بواسطة: {item.observer}</div>}
+                                        {item.observer && <div className="mt-4 pt-4 border-t border-slate-200 text-[11px] font-bold text-slate-400 italic text-right">رصد بواسطة: {item.observer}</div>}
                                     </div>
 
                                     <div className="flex gap-4">
