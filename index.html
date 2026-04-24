@@ -227,7 +227,6 @@
                             floors: clean(col[15]), floorsImg: clean(col[16]), water: clean(col[17]), waterImg: clean(col[18]),
                             failCount: 0
                         };
-                        // الرقم الفعلي للبنو المتعثرة فقط
                         if(aEntry.status.includes('مغلق')) aEntry.failCount++; 
                         ['pots', 'tables', 'floors', 'water'].forEach(k => { if(aEntry[k]?.includes('لا')) aEntry.failCount++; });
                         return aEntry;
@@ -248,7 +247,6 @@
                 }).filter(i => i && i.id !== ""); 
             };
 
-            // خريطة الربط الذكي
             const contractorInfo = useMemo(() => {
                 const map = {};
                 data.admin.forEach(item => {
@@ -287,7 +285,6 @@
             }, [data, activeTab]);
 
             const criticalUnits = useMemo(() => {
-                // تصنيف الحرج: 3 نواقص لمنى وعرفة، وناقصين للملفات
                 const threshold = activeTab === 'admin' ? 2 : 3;
                 return (data[activeTab] || []).filter(i => i.failCount >= threshold).sort((a,b) => b.failCount - a.failCount);
             }, [data, activeTab]);
@@ -374,6 +371,14 @@
                 <div className={`min-h-screen tab-${activeTab}`}>
                     <div className="vibrant-bg"></div>
 
+                    {/* Floating Refresh Button - bottom left */}
+                    <button 
+                        onClick={() => fetchAll()} 
+                        className="fixed bottom-28 left-6 z-[600] bg-blue-600 text-white p-4 rounded-full shadow-2xl tap-active border-4 border-white/20"
+                    >
+                        <Icon name="refresh-cw" color="text-white" className="w-6 h-6" />
+                    </button>
+
                     <header className="sticky top-0 z-[100] glass-nav px-6 py-4 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="bg-slate-900 p-2.5 rounded-2xl shadow-lg transform rotate-2"><Icon name="cpu" color="text-white" className="w-6 h-6" /></div>
@@ -382,9 +387,8 @@
                                 <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest text-right">تزامن حي: {lastUpdate}</p>
                             </div>
                         </div>
-                        <button onClick={() => fetchAll()} className="p-3 bg-white rounded-full shadow-md tap-active border border-slate-100">
-                            <Icon name="refresh-cw" color="text-blue-500" className="w-5 h-5" />
-                        </button>
+                        {/* Empty placeholder to maintain header spacing if needed, but button is removed */}
+                        <div className="w-10"></div>
                     </header>
 
                     {loading && (
@@ -446,7 +450,6 @@
 
                         <div className="space-y-6 pb-32 text-right">
                             {filteredData.length > 0 ? filteredData.map((item, idx) => {
-                                // جلب بيانات ضابط الاتصال من الخريطة
                                 let info = contractorInfo.map[item.id] || { phone: item.phone, officer: "غير مسجل" };
                                 if (item.name.includes("نعيمة")) info = contractorInfo.overrides["نعيمة"];
                                 if (item.name.includes("الجمان")) info = contractorInfo.overrides["الجمان"];
