@@ -4,23 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     
-    <!-- وسوم تهيئة الملف ليعمل كتطبيق (PWA) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="مرصد 2026">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
     
-    <title>مرصد المشاعر 2026 | Smart Dashboard</title>
+    <title>مرصد المشاعر 2026 | Smart Dashboard Pro</title>
 
-    <!-- التقنيات -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- الخطوط -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
@@ -86,9 +82,18 @@
         
         .tap-active:active { transform: scale(0.96); opacity: 0.9; }
 
-        .category-btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .readiness-ring { transition: stroke-dashoffset 1s ease-out; }
 
-        .shadow-vibrant { box-shadow: 0 15px 30px -5px var(--tw-shadow-color); }
+        .highlight-card {
+            animation: highlightPulse 2s ease-in-out;
+            border: 4px solid #3b82f6 !important;
+        }
+
+        @keyframes highlightPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body class="safe-area-bottom">
@@ -102,22 +107,42 @@
             return <i data-lucide={name} className={`${className} ${color}`}></i>;
         };
 
+        const ReadinessCircle = ({ percentage, label, colorClass }) => {
+            const radius = 35;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (percentage / 100) * circumference;
+
+            return (
+                <div className="flex flex-col items-center gap-2">
+                    <div className="relative w-20 h-20">
+                        <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="40" cy="40" r={radius} fill="transparent" stroke="#e2e8f0" strokeWidth="6" />
+                            <circle cx="40" cy="40" r={radius} fill="transparent" stroke="currentColor" strokeWidth="6" 
+                                    strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+                                    className={`${colorClass} readiness-ring`} />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-xs font-black">{Math.round(percentage)}%</span>
+                        </div>
+                    </div>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter text-center leading-none">{label}</span>
+                </div>
+            );
+        };
+
         const MobileBarChart = ({ data, labels, colors }) => {
             const maxValue = Math.max(...data, 5);
             return (
-                <div className="w-full h-64 flex items-end justify-between gap-3 px-2 pt-12 pb-4 relative text-right bg-slate-50/30 rounded-[2rem] border border-slate-100 shadow-inner">
-                    <div className="absolute inset-0 flex flex-col justify-between py-12 px-6 pointer-events-none opacity-5 text-right">
-                        {[1, 2, 3, 4].map(i => <div key={i} className="w-full h-px bg-slate-900"></div>)}
-                    </div>
+                <div className="w-full h-44 flex items-end justify-between gap-3 px-2 pt-10 pb-2 relative text-right">
                     {data.map((val, i) => {
                         const height = (val / maxValue) * 100;
                         return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-3 justify-end h-full relative z-10">
-                                <span className={`text-[14px] font-black ${val > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                            <div key={i} className="flex-1 flex flex-col items-center gap-2 justify-end h-full relative z-10">
+                                <span className={`text-[12px] font-black ${val > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
                                     {val}
                                 </span>
                                 <div 
-                                    className="w-full max-w-[32px] bar-glow relative overflow-hidden"
+                                    className="w-full max-w-[20px] bar-glow relative overflow-hidden"
                                     style={{ 
                                         height: `${height}%`, 
                                         background: colors[i % colors.length],
@@ -126,7 +151,7 @@
                                 >
                                     <div className="absolute inset-0 bg-white/20"></div>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap mt-1">{labels[i]}</span>
+                                <span className="text-[8px] font-bold text-slate-500 whitespace-nowrap mt-1">{labels[i]}</span>
                             </div>
                         );
                     })}
@@ -173,33 +198,58 @@
                     const col = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                     if (col.length < 5) return null;
                     const clean = (v) => v ? v.replace(/"/g, '').trim() : "";
-                    
                     const cleanId = (val) => {
                         const m = clean(val).match(/\d+/);
                         return m ? m[0] : "";
                     };
 
-                    if(type === 'muna') return { 
-                        id: cleanId(col[0]), name: clean(col[3]), observer: clean(col[2]), time: clean(col[1]), note: clean(col[14]),
-                        water: clean(col[9]), waterImg: clean(col[10]), electricity: clean(col[8]), electricityImg: clean(col[8]),
-                        appliances: clean(col[10]), appliancesImg: clean(col[11]), tools: clean(col[12]), toolsImg: clean(col[13]),
-                        floors: clean(col[6]), floorsImg: clean(col[7]), phone: clean(col[16]) 
+                    const entry = {
+                        id: cleanId(col[0]), 
+                        name: clean(col[3] || col[0]), observer: clean(col[2]), time: clean(col[1]), note: clean(col[14]),
+                        water: clean(col[9]), waterImg: clean(col[10]),
+                        electricity: clean(col[8]), electricityImg: clean(col[8]),
+                        appliances: clean(col[10]), appliancesImg: clean(col[11]),
+                        tools: clean(col[12]), toolsImg: clean(col[13]),
+                        floors: clean(col[6]), floorsImg: clean(col[7]),
+                        phone: clean(col[16]),
+                        failCount: 0
                     };
-                    if(type === 'arafat') return { 
-                        id: cleanId(col[0]), name: clean(col[0]).split(' - ')[1] || clean(col[0]), observer: clean(col[2]), time: clean(col[1]), status: clean(col[6]), note: clean(col[10]),
-                        pots: clean(col[11]), potsImg: clean(col[12]), tables: clean(col[13]), tablesImg: clean(col[14]),
-                        floors: clean(col[15]), floorsImg: clean(col[16]), water: clean(col[17]), waterImg: clean(col[18]), phone: clean(col[16]) 
-                    };
-                    if(type === 'admin') return { 
-                        id: cleanId(col[6]), name: clean(col[1]), phone: clean(col[16]), officer: clean(col[15]),
-                        liaison: (clean(col[13]).includes('المالك') || clean(col[14]).length > 2),
-                        kerosene: (clean(col[17]).includes('استلام') || clean(col[18]).length > 2),
-                        commitment: (clean(col[20]).includes('التعبئة') || clean(col[21]).length > 2)
-                    };
+
+                    if(type === 'muna') {
+                        ['water', 'electricity', 'appliances', 'tools', 'floors'].forEach(k => { if(entry[k]?.includes('لا')) entry.failCount++; });
+                        return entry;
+                    }
+                    if(type === 'arafat') {
+                        const aEntry = {
+                            ...entry,
+                            name: clean(col[0]).split(' - ')[1] || clean(col[0]), status: clean(col[6]),
+                            pots: clean(col[11]), potsImg: clean(col[12]), tables: clean(col[13]), tablesImg: clean(col[14]),
+                            floors: clean(col[15]), floorsImg: clean(col[16]), water: clean(col[17]), waterImg: clean(col[18]),
+                            failCount: 0
+                        };
+                        // الرقم الفعلي للبنو المتعثرة فقط
+                        if(aEntry.status.includes('مغلق')) aEntry.failCount++; 
+                        ['pots', 'tables', 'floors', 'water'].forEach(k => { if(aEntry[k]?.includes('لا')) aEntry.failCount++; });
+                        return aEntry;
+                    }
+                    if(type === 'admin') {
+                        const adminEntry = { 
+                            id: cleanId(col[6]), name: clean(col[1]), phone: clean(col[16]), officer: clean(col[15]),
+                            liaison: (clean(col[13]).includes('المالك') || clean(col[14]).length > 2),
+                            kerosene: (clean(col[17]).includes('استلام') || clean(col[18]).length > 2),
+                            commitment: (clean(col[20]).includes('التعبئة') || clean(col[21]).length > 2),
+                            failCount: 0
+                        };
+                        if(!adminEntry.liaison) adminEntry.failCount++;
+                        if(!adminEntry.kerosene) adminEntry.failCount++;
+                        if(!adminEntry.commitment) adminEntry.failCount++;
+                        return adminEntry;
+                    }
                 }).filter(i => i && i.id !== ""); 
             };
 
-            const contractorInfoMap = useMemo(() => {
+            // خريطة الربط الذكي
+            const contractorInfo = useMemo(() => {
                 const map = {};
                 data.admin.forEach(item => {
                     if (item.id) map[item.id] = { phone: item.phone, officer: item.officer };
@@ -212,63 +262,73 @@
             }, [data.admin]);
 
             useEffect(() => { fetchAll(); }, []);
-
-            useEffect(() => { 
-                setActiveSubFilter('all');
-            }, [activeTab]);
+            useEffect(() => { setActiveSubFilter('all'); }, [activeTab]);
 
             const stats = useMemo(() => {
-                return {
-                    muna: [data.muna.filter(d=>d.water.includes('لا')).length, data.muna.filter(d=>d.electricity.includes('لا')).length, data.muna.filter(d=>d.appliances.includes('لا')).length, data.muna.filter(d=>d.tools.includes('لا')).length, data.muna.filter(d=>d.floors.includes('لا')).length],
-                    arafat: [data.arafat.filter(d=>d.status.includes('مغلق')).length, data.arafat.filter(d=>d.water.includes('لا')).length, data.arafat.filter(d=>d.pots.includes('لا')).length, data.arafat.filter(d=>d.tables.includes('لا')).length, data.arafat.filter(d=>d.floors.includes('لا')).length],
-                    admin: [data.admin.filter(d=>!d.liaison).length, data.admin.filter(d=>!d.kerosene).length, data.admin.filter(d=>!d.commitment).length]
-                };
-            }, [data]);
+                const d = data[activeTab] || [];
+                if (!d.length) return { counts: [0,0,0,0,0], readiness: 0 };
+                let totalItems = 0; let successItems = 0;
+                const counts = activeTab === 'muna' ? 
+                    ['water', 'electricity', 'appliances', 'tools', 'floors'].map(k => d.filter(i => i[k]?.includes('لا')).length) :
+                    activeTab === 'arafat' ?
+                    ['status', 'water', 'pots', 'tables', 'floors'].map(k => d.filter(i => i[k]?.includes(k==='status'?'مغلق':'لا')).length) :
+                    ['liaison', 'kerosene', 'commitment'].map(k => d.filter(i => !i[k]).length);
+
+                d.forEach(item => {
+                    const keys = activeTab === 'muna' ? ['water', 'electricity', 'appliances', 'tools', 'floors'] :
+                                 activeTab === 'arafat' ? ['status', 'water', 'pots', 'tables', 'floors'] : ['liaison', 'kerosene', 'commitment'];
+                    keys.forEach(k => {
+                        totalItems++;
+                        const val = item[k];
+                        if (typeof val === 'string' ? (val.includes('نعم') || (k==='status' && val.includes('مفتوح'))) : !!val) successItems++;
+                    });
+                });
+                return { counts, readiness: (successItems / totalItems) * 100 };
+            }, [data, activeTab]);
+
+            const criticalUnits = useMemo(() => {
+                // تصنيف الحرج: 3 نواقص لمنى وعرفة، وناقصين للملفات
+                const threshold = activeTab === 'admin' ? 2 : 3;
+                return (data[activeTab] || []).filter(i => i.failCount >= threshold).sort((a,b) => b.failCount - a.failCount);
+            }, [data, activeTab]);
+
+            const filteredData = useMemo(() => {
+                let base = [...(data[activeTab] || [])];
+                base.sort((a,b) => b.failCount - a.failCount);
+                if (activeSubFilter !== 'all') {
+                    if (activeTab === 'muna') base = base.filter(d => d[activeSubFilter]?.includes('لا'));
+                    else if (activeTab === 'arafat') base = base.filter(d => activeSubFilter === 'status' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
+                    else if (activeTab === 'admin') base = base.filter(d => !d[activeSubFilter]);
+                }
+                if (!search) return base;
+                const q = search.toLowerCase();
+                return base.filter(d => d.name?.toLowerCase().includes(q) || d.id?.includes(q));
+            }, [activeTab, data, activeSubFilter, search]);
 
             const filterSettings = useMemo(() => ({
                 muna: [
-                    { id: 'all', label: 'الكل', icon: 'list', count: data.muna.length, bg: 'bg-slate-500' },
-                    { id: 'water', label: 'المياه', icon: 'droplets', count: stats.muna[0], bg: 'bg-sky-500' },
-                    { id: 'electricity', label: 'الكهرباء', icon: 'zap', count: stats.muna[1], bg: 'bg-amber-500' },
-                    { id: 'appliances', label: 'الأجهزة', icon: 'settings', count: stats.muna[2], bg: 'bg-violet-500' },
-                    { id: 'tools', label: 'الأدوات', icon: 'utensils', count: stats.muna[3], bg: 'bg-orange-500' },
-                    { id: 'floors', label: 'الأرضيات', icon: 'layers', count: stats.muna[4], bg: 'bg-emerald-500' }
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.muna.length, bg: 'bg-slate-600' },
+                    { id: 'water', label: 'المياه', icon: 'droplets', count: stats.counts[0], bg: 'bg-sky-500' },
+                    { id: 'electricity', label: 'الكهرباء', icon: 'zap', count: stats.counts[1], bg: 'bg-amber-500' },
+                    { id: 'appliances', label: 'الأجهزة', icon: 'settings', count: stats.counts[2], bg: 'bg-violet-500' },
+                    { id: 'tools', label: 'الأدوات', icon: 'utensils', count: stats.counts[3], bg: 'bg-orange-500' },
+                    { id: 'floors', label: 'الأرضيات', icon: 'layers', count: stats.counts[4], bg: 'bg-emerald-500' }
                 ],
                 arafat: [
-                    { id: 'all', label: 'الكل', icon: 'list', count: data.arafat.length, bg: 'bg-slate-500' },
-                    { id: 'closed', label: 'مغلق', icon: 'alert-octagon', count: stats.arafat[0], bg: 'bg-rose-500' },
-                    { id: 'water', label: 'المياه', icon: 'droplets', count: stats.arafat[1], bg: 'bg-cyan-500' },
-                    { id: 'pots', label: 'القدور', icon: 'soup', count: stats.arafat[2], bg: 'bg-green-500' },
-                    { id: 'tables', label: 'الطاولات', icon: 'armchair', count: stats.arafat[3], bg: 'bg-indigo-500' },
-                    { id: 'floors', label: 'الأرضية', icon: 'layers', count: stats.arafat[4], bg: 'bg-teal-500' }
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.arafat.length, bg: 'bg-slate-600' },
+                    { id: 'status', label: 'مغلق', icon: 'alert-octagon', count: stats.counts[0], bg: 'bg-rose-500' },
+                    { id: 'water', label: 'المياه', icon: 'droplets', count: stats.counts[1], bg: 'bg-cyan-500' },
+                    { id: 'pots', label: 'القدور', icon: 'soup', count: stats.counts[2], bg: 'bg-green-500' },
+                    { id: 'tables', label: 'الطاولات', icon: 'armchair', count: stats.counts[3], bg: 'bg-indigo-500' },
+                    { id: 'floors', label: 'الأرضية', icon: 'layers', count: stats.counts[4], bg: 'bg-teal-500' }
                 ],
                 admin: [
-                    { id: 'all', label: 'الكل', icon: 'list', count: data.admin.length, bg: 'bg-slate-500' },
-                    { id: 'liaison', label: 'ضابط اتصال', icon: 'user-check', count: stats.admin[0], bg: 'bg-purple-600' },
-                    { id: 'kerosene', label: 'الكيروسين', icon: 'fuel', count: stats.admin[1], bg: 'bg-blue-600' },
-                    { id: 'commitment', label: 'ملف التعهد', icon: 'file-check', count: stats.admin[2], bg: 'bg-rose-600' }
+                    { id: 'all', label: 'الكل', icon: 'list', count: data.admin.length, bg: 'bg-slate-600' },
+                    { id: 'liaison', label: 'ضابط اتصال', icon: 'user-check', count: stats.counts[0], bg: 'bg-purple-600' },
+                    { id: 'kerosene', label: 'الكيروسين', icon: 'fuel', count: stats.counts[1], bg: 'bg-blue-600' },
+                    { id: 'commitment', label: 'ملف التعهد', icon: 'file-check', count: stats.counts[2], bg: 'bg-rose-600' }
                 ]
             }), [stats, data]);
-
-            const filteredData = useMemo(() => {
-                let base = data[activeTab] || [];
-                
-                if (activeSubFilter !== 'all') {
-                    if (activeTab === 'muna') base = base.filter(d => d[activeSubFilter]?.includes('لا'));
-                    else if (activeTab === 'arafat') base = base.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
-                    else if (activeTab === 'admin') base = base.filter(d => !d[activeSubFilter]);
-                }
-                
-                if (!search) return base;
-                const query = search.toLowerCase();
-                return base.filter(d => d.name?.toLowerCase().includes(query) || d.id?.includes(query));
-            }, [activeTab, data, activeSubFilter, search]);
-
-            const chartConfig = {
-                muna: { labels: ['مياه', 'كهرباء', 'أجهزة', 'أدوات', 'أرضية'], data: stats.muna, colors: ['#0ea5e9', '#f59e0b', '#8b5cf6', '#f97316', '#10b981'] },
-                arafat: { labels: ['مغلق', 'مياه', 'قدور', 'طاولات', 'أرضية'], data: stats.arafat, colors: ['#f43f5e', '#06b6d4', '#10b981', '#6366f1', '#14b8a6'] },
-                admin: { labels: ['ضابط', 'كيروسين', 'تعهد'], data: stats.admin, colors: ['#7c3aed', '#0891b2', '#be123c'] }
-            };
 
             const formatPhoneForWhatsApp = (num) => {
                 if(!num) return "";
@@ -278,19 +338,28 @@
                 return clean;
             };
 
+            const scrollToUnit = (id) => {
+                const el = document.getElementById(`card-${id}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('highlight-card');
+                    setTimeout(() => el.classList.remove('highlight-card'), 2500);
+                }
+            };
+
             const StatusRow = ({ label, value, img }) => {
-                const isFail = typeof value === 'string' ? value.includes('لا') : !value;
+                const isFail = typeof value === 'string' ? (value.includes('لا') || value.includes('مغلق')) : !value;
                 const isPass = typeof value === 'string' ? (value.includes('نعم') || value.includes('مفتوح')) : !!value;
                 return (
                     <div className="detail-row">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isFail ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : isPass ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
+                        <div className="flex items-center gap-2 text-right">
+                            <div className={`w-1.5 h-1.5 rounded-full ${isFail ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : isPass ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-300'}`}></div>
                             <span className="text-[11px] font-bold text-slate-600">{label}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             {img && img !== '---' && (
-                                <a href={img.match(/https?:\/\/[^\s,]+/)?.[0]} target="_blank" className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-90 transition-transform">
-                                    الإثبات
+                                <a href={img.match(/https?:\/\/[^\s,]+/)?.[0]} target="_blank" className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-95 transition-transform shadow-sm">
+                                    المرفق
                                 </a>
                             )}
                             <span className={`text-[10px] font-black ${isFail ? 'text-rose-600' : isPass ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -307,13 +376,10 @@
 
                     <header className="sticky top-0 z-[100] glass-nav px-6 py-4 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-3">
-                            <div className="bg-slate-900 p-2.5 rounded-2xl shadow-lg"><Icon name="layout-grid" color="text-white" className="w-6 h-6" /></div>
+                            <div className="bg-slate-900 p-2.5 rounded-2xl shadow-lg transform rotate-2"><Icon name="cpu" color="text-white" className="w-6 h-6" /></div>
                             <div>
-                                <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1 text-right">مرصد المشاعر</h1>
-                                <div className="flex items-center gap-2 justify-start">
-                                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lastUpdate || 'Syncing...'}</p>
-                                </div>
+                                <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1 text-right">نظام الرقابة الذكي</h1>
+                                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest text-right">تزامن حي: {lastUpdate}</p>
                             </div>
                         </div>
                         <button onClick={() => fetchAll()} className="p-3 bg-white rounded-full shadow-md tap-active border border-slate-100">
@@ -324,63 +390,85 @@
                     {loading && (
                         <div className="fixed inset-0 bg-white/60 backdrop-blur-xl z-[200] flex flex-col items-center justify-center text-right">
                             <div className="w-14 h-14 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
-                            <p className="mt-4 text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">Synchronizing Data</p>
+                            <p className="mt-4 text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">Processing Field Logs</p>
                         </div>
                     )}
 
                     <main className="px-5 py-6 space-y-8 animate-card">
-                        <section className="glass-card rounded-[3rem] p-8 border border-white relative text-right">
-                            <div className="flex items-center justify-between mb-6 px-1">
-                                <div className="flex items-center gap-3 text-right">
-                                    <div className="p-2 bg-slate-900 rounded-xl shadow-lg"><Icon name="bar-chart-3" color="text-white" className="w-5 h-5" /></div>
-                                    <span className="text-[13px] font-black text-slate-800 uppercase tracking-[0.1em]">تحليل الميدان الشامل</span>
+                        
+                        <section className="glass-card rounded-[3rem] p-6 border border-white flex flex-col md:flex-row items-center gap-6">
+                            <div className="flex-1 w-full text-right">
+                                <div className="flex items-center gap-2 mb-4 justify-start">
+                                    <Icon name="activity" color="text-slate-800" className="w-5 h-5" />
+                                    <span className="text-[12px] font-black text-slate-800 uppercase tracking-widest">مؤشرات الجاهزية التشغيلية</span>
                                 </div>
-                                <div className="flex items-center gap-2"><span className="bg-emerald-100 text-emerald-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">بيان مباشر</span></div>
+                                <MobileBarChart 
+                                    data={stats.counts} 
+                                    labels={activeTab === 'muna' ? ['مياه','كهرباء','أجهزة','أدوات','أرضية'] : activeTab === 'arafat' ? ['مغلق','مياه','قدور','طاولات','أرضية'] : ['ضابط','وقود','تعهد']} 
+                                    colors={['#3b82f6', '#f59e0b', '#8b5cf6', '#f97316', '#10b981', '#f43f5e', '#0891b2']} 
+                                />
                             </div>
-                            <MobileBarChart data={chartConfig[activeTab].data} labels={chartConfig[activeTab].labels} colors={chartConfig[activeTab].colors} />
+                            <div className="w-px h-32 bg-slate-100 hidden md:block"></div>
+                            <ReadinessCircle percentage={stats.readiness} label="نسبة الجاهزية" colorClass={stats.readiness > 80 ? 'text-emerald-500' : stats.readiness > 50 ? 'text-amber-500' : 'text-rose-500'} />
                         </section>
+
+                        {criticalUnits.length > 0 && (
+                            <section className="animate-in fade-in slide-in-from-right duration-500 text-right">
+                                <div className="flex items-center gap-2 mb-3 px-2 justify-start">
+                                    <Icon name="bell-ring" color="text-rose-500" className="w-4 h-4 animate-bounce" />
+                                    <span className="text-[11px] font-black text-rose-600 uppercase tracking-widest">تنبيهات حرجة ({activeTab === 'muna' ? 'منى' : activeTab === 'arafat' ? 'عرفة' : 'الملفات'})</span>
+                                </div>
+                                <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2">
+                                    {criticalUnits.map(unit => (
+                                        <div key={unit.id} onClick={() => scrollToUnit(unit.id)} className="min-w-[150px] bg-rose-500 text-white p-4 rounded-3xl shadow-lg shadow-rose-200 cursor-pointer tap-active">
+                                            <div className="text-[10px] font-black opacity-80 mb-1 text-right">مركز #{unit.id}</div>
+                                            <div className="text-xs font-black truncate text-right">{unit.name}</div>
+                                            <div className="mt-2 bg-white/20 rounded-lg px-2 py-1 text-[9px] font-bold w-fit ml-auto"> {unit.failCount} تعثرات فعلية</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
                         <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2 px-1 text-right">
                             {(filterSettings[activeTab] || []).map((item) => (
-                                <button key={item.id} onClick={() => setActiveSubFilter(item.id)} className={`min-w-[110px] p-5 rounded-[2.2rem] border-2 transition-all flex flex-col items-center gap-2 tap-active category-btn shadow-vibrant ${activeSubFilter === item.id ? `${item.bg} border-transparent text-white scale-105 shadow-color-[rgba(0,0,0,0.1)]` : 'bg-white border-slate-100 text-slate-400 shadow-transparent'}`}>
-                                    <span className="text-3xl font-black leading-none">{item.count}</span>
-                                    <span className="text-[10px] font-black uppercase text-center tracking-tighter">{item.label}</span>
+                                <button key={item.id} onClick={() => setActiveSubFilter(item.id)} className={`min-w-[100px] p-4 rounded-3xl border-2 transition-all flex flex-col items-center gap-1 tap-active category-btn shadow-vibrant ${activeSubFilter === item.id ? `${item.bg} border-transparent text-white scale-105 shadow-color-[rgba(0,0,0,0.1)]` : 'bg-white border-slate-100 text-slate-400 shadow-transparent'}`}>
+                                    <span className="text-2xl font-black leading-none">{item.count}</span>
+                                    <span className="text-[9px] font-black uppercase text-center tracking-tighter leading-none">{item.label}</span>
                                 </button>
                             ))}
                         </div>
 
                         <div className="relative group">
                             <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none"><Icon name="search" color="text-slate-400" className="w-5 h-5" /></div>
-                            <input type="text" onChange={(e) => setSearch(e.target.value)} placeholder="رقم المركز، المتعهد، أو المراقب..." class="w-full bg-white border border-slate-200 rounded-[2rem] py-6 pr-16 pl-6 text-slate-900 font-bold outline-none focus:ring-8 focus:ring-blue-500/5 focus:border-blue-500 transition-all text-sm shadow-sm text-right" />
+                            <input type="text" onChange={(e) => setSearch(e.target.value)} placeholder="رقم المركز أو المتعهد..." class="w-full bg-white border border-slate-200 rounded-3xl py-5 pr-16 pl-6 text-slate-900 font-bold outline-none focus:ring-8 focus:ring-blue-500/5 focus:border-blue-500 transition-all text-sm shadow-sm text-right" />
                         </div>
 
-                        <div className="space-y-6 pb-32">
+                        <div className="space-y-6 pb-32 text-right">
                             {filteredData.length > 0 ? filteredData.map((item, idx) => {
-                                let targetOfficer = "غير مسجل";
-                                let targetPhone = item.phone || "";
-
-                                if (item.name.includes("نعيمة")) {
-                                    targetOfficer = contractorInfoMap.overrides["نعيمة"].officer;
-                                    targetPhone = contractorInfoMap.overrides["نعيمة"].phone;
-                                } else if (item.name.includes("الجمان")) {
-                                    targetOfficer = contractorInfoMap.overrides["الجمان"].officer;
-                                    targetPhone = contractorInfoMap.overrides["الجمان"].phone;
-                                } else if (contractorInfoMap.map[item.id]) {
-                                    targetOfficer = contractorInfoMap.map[item.id].officer;
-                                    targetPhone = contractorInfoMap.map[item.id].phone;
-                                }
+                                // جلب بيانات ضابط الاتصال من الخريطة
+                                let info = contractorInfo.map[item.id] || { phone: item.phone, officer: "غير مسجل" };
+                                if (item.name.includes("نعيمة")) info = contractorInfo.overrides["نعيمة"];
+                                if (item.name.includes("الجمان")) info = contractorInfo.overrides["الجمان"];
 
                                 return (
-                                <div key={idx} className="glass-card rounded-[2.5rem] p-7 border-r-[10px] border-slate-900 relative overflow-hidden animate-card text-right">
+                                <div key={idx} id={`card-${item.id}`} className={`glass-card rounded-[2.5rem] p-7 border-r-[10px] relative transition-all duration-500 animate-card text-right ${item.failCount >= (activeTab==='admin'?2:3) ? 'border-rose-500 shadow-rose-100' : 'border-slate-900 shadow-slate-100'}`}>
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-900/5 blur-3xl rounded-full"></div>
-                                    <div className="flex justify-between items-start mb-5">
+                                    <div className="flex justify-between items-start mb-5 text-right">
                                         <div className="bg-slate-900 text-white px-4 py-1.5 rounded-2xl text-[11px] font-black shadow-lg">#{item.id}</div>
-                                        <div className="flex items-center gap-2 text-slate-400"><Icon name="clock" className="w-3.5 h-3.5" /><span className="text-[11px] font-bold uppercase">{item.time || 'DATA FEED'}</span></div>
+                                        <div className="flex items-center gap-2 text-slate-400"><Icon name="clock" className="w-3.5 h-3.5" /><span className="text-[11px] font-bold uppercase">{item.time || 'INTERNAL'}</span></div>
                                     </div>
-                                    <h4 className="text-xl font-black text-slate-900 leading-tight mb-2">{item.name}</h4>
-                                    <div className="flex items-center gap-2 mb-4 text-[10px] font-black text-indigo-600 bg-indigo-50 w-fit px-3 py-1 rounded-lg border border-indigo-100 text-right">
-                                        <Icon name="user-check" className="w-3.5 h-3.5" />
-                                        <span>ضابط الاتصال: {targetOfficer}</span>
+                                    <h4 className="text-xl font-black text-slate-900 leading-tight mb-2 text-right">{item.name}</h4>
+                                    
+                                    <div className="flex flex-wrap gap-2 mb-4 text-right justify-start">
+                                        <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 bg-blue-50 w-fit px-3 py-1 rounded-lg border border-blue-100">
+                                            <Icon name="user-check" className="w-3.5 h-3.5" /> <span>ضابط الاتصال: {info.officer}</span>
+                                        </div>
+                                        {(activeTab === 'muna' || activeTab === 'arafat') && item.observer && (
+                                            <div className="flex items-center gap-2 text-[10px] font-black text-indigo-600 bg-indigo-50 w-fit px-3 py-1 rounded-lg border border-indigo-100">
+                                                <Icon name="eye" className="w-3.5 h-3.5" /> <span>المراقب: {item.observer}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="bg-slate-50/70 rounded-3xl p-5 border border-slate-100 mb-6 shadow-inner text-right">
@@ -409,21 +497,20 @@
                                                 <StatusRow label="ملف التعهد" value={item.commitment} />
                                             </div>
                                         )}
-                                        {item.observer && <div className="mt-4 pt-4 border-t border-slate-200 text-[11px] font-bold text-slate-400 italic text-right">رصد بواسطة: {item.observer}</div>}
                                     </div>
 
                                     <div className="flex gap-4">
-                                        <a href={`tel:${targetPhone || ''}`} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-slate-200">
-                                            <Icon name="phone" className="w-5 h-5 text-blue-400" /> اتصال مباشر
+                                        <a href={`tel:${info.phone}`} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-slate-200">
+                                            <Icon name="phone" className="w-5 h-5 text-blue-400" /> اتصال
                                         </a>
-                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(targetPhone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-emerald-100">
+                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(info.phone)}?text=هام: نلاحظ تعثر في مركز ${item.id}، نأمل المعالجة الفورية.`} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-emerald-100">
                                             <Icon name="send" className="w-5 h-5" /> واتساب
                                         </a>
                                     </div>
                                 </div>
                                 );
                             }) : (
-                                <div className="py-20 text-center flex flex-col items-center opacity-40">
+                                <div className="py-24 text-center flex flex-col items-center opacity-40 italic">
                                     <Icon name="check-circle" color="text-emerald-500" className="w-20 h-20 mb-4" />
                                     <p className="text-slate-500 font-black tracking-widest uppercase">الميدان مستقر تماماً</p>
                                 </div>
@@ -441,9 +528,9 @@
         };
 
         const NavBtn = ({ id, label, icon, active, onClick, color }) => (
-            <button onClick={() => { onClick(id); window.scrollTo(0,0); }} className={`flex flex-col items-center gap-1 flex-1 transition-all tap-active ${active === id ? `${color} scale-110` : 'text-slate-500'}`}>
+            <button onClick={() => { onClick(id); window.scrollTo(0,0); }} className={`flex flex-col items-center gap-1 flex-1 transition-all tap-active ${active === id ? `${color} scale-110` : 'text-slate-400'}`}>
                 <div className={`p-2 rounded-xl transition-all ${active === id ? 'bg-slate-100 shadow-inner' : ''}`}><Icon name={icon} className="w-7 h-7" /></div>
-                <span className={`text-[11px] font-black uppercase tracking-widest ${active === id ? 'opacity-100' : 'opacity-50'}`}>{label}</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${active === id ? 'opacity-100 text-slate-800' : 'opacity-50'}`}>{label}</span>
             </button>
         );
 
