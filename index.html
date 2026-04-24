@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     
+    <!-- وسوم تهيئة الملف ليعمل كتطبيق (PWA) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="مرصد 2026">
@@ -12,12 +13,14 @@
     
     <title>مرصد المشاعر 2026 | Smart Dashboard Pro</title>
 
+    <!-- التقنيات -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- الخطوط -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
@@ -113,17 +116,6 @@
             return <i data-lucide={name} className={`${className} ${color}`}></i>;
         };
 
-        const ImageModal = ({ url, onClose }) => {
-            if (!url) return null;
-            return (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-lg animate-in fade-in duration-300" onClick={onClose}>
-                    <button className="absolute top-6 left-6 text-white bg-white/10 p-3 rounded-full"><Icon name="x" className="w-6 h-6" /></button>
-                    <img src={url} className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl animate-in zoom-in duration-300" onClick={(e) => e.stopPropagation()} />
-                    <div className="absolute bottom-10 bg-black/40 backdrop-blur px-6 py-3 rounded-full text-white font-bold text-sm">معاينة الإثبات الميداني</div>
-                </div>
-            );
-        };
-
         const ReadinessCircle = ({ percentage, label, colorClass }) => {
             const radius = 35;
             const circumference = 2 * Math.PI * radius;
@@ -189,7 +181,6 @@
             const [lastUpdate, setLastUpdate] = useState('');
             const [search, setSearch] = useState('');
             const [activeSubFilter, setActiveSubFilter] = useState('all');
-            const [previewImage, setPreviewImage] = useState(null);
 
             const fetchAll = async (silent = false) => {
                 if (!silent) setLoading(true);
@@ -373,12 +364,13 @@
                         </div>
                         <div className="flex items-center gap-3">
                             {img && img !== '---' && (
-                                <button 
-                                    onClick={() => setPreviewImage(img.match(/https?:\/\/[^\s,]+/)?.[0])}
-                                    className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-95 transition-transform shadow-sm"
+                                <a 
+                                    href={img.match(/https?:\/\/[^\s,]+/)?.[0]} 
+                                    target="_blank"
+                                    className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-95 transition-transform shadow-sm"
                                 >
                                     عرض الإثبات
-                                </button>
+                                </a>
                             )}
                             <span className={`text-[10px] font-black ${isFail ? 'text-rose-600' : isPass ? 'text-emerald-600' : 'text-slate-400'}`}>
                                 {isPass ? 'مكتمل' : isFail ? 'متعثر' : '---'}
@@ -391,8 +383,6 @@
             return (
                 <div className={`min-h-screen tab-${activeTab}`}>
                     <div className="vibrant-bg"></div>
-
-                    <ImageModal url={previewImage} onClose={() => setPreviewImage(null)} />
 
                     <button 
                         onClick={() => fetchAll()} 
