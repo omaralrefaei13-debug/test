@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- وسوم تهيئة الملف ليعمل كتطبيق (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="مرصد 2026">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    
+    <title>مرصد المشاعر 2026 | Smart Dashboard</title>
+
+    <!-- التقنيات -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- الخطوط -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --muna-primary: #3b82f6;
+            --arafat-primary: #10b981;
+            --admin-primary: #8b5cf6;
+        }
+
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #0f172a; 
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent; 
+            scroll-behavior: smooth; 
+            overflow-x: hidden;
+            /* منع السحب لأسفل لتحديث الصفحة في الجوال لضمان تجربة التطبيق */
+            overscroll-behavior-y: contain;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-card { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+        .bar-glow {
+            filter: drop-shadow(0 0 8px currentColor);
+            transition: height 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .detail-row:last-child { border-bottom: none; }
+        
+        /* تحسين استجابة الأزرار للمس */
+        .tap-active:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="safe-area-bottom">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const Icon = ({ name, color, className }) => {
+            useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name, color]);
+            return <i data-lucide={name} className={`${className} ${color}`}></i>;
+        };
+
+        const MobileBarChart = ({ data, labels, colors }) => {
+            const maxValue = Math.max(...data, 5);
+            return (
+                <div className="w-full h-48 flex items-end justify-between gap-4 px-2 pt-10 pb-2 relative">
+                    <div className="absolute inset-0 flex flex-col justify-between opacity-10 pointer-events-none py-8 px-4">
+                        {[1, 2, 3].map(i => <div key={i} className="w-full h-px bg-white"></div>)}
+                    </div>
+                    
+                    {data.map((val, i) => {
+                        const height = (val / maxValue) * 100;
+                        return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-3 justify-end h-full relative z-10">
+                                <span className={`text-[11px] font-black ${val > 0 ? 'text-white' : 'text-slate-600'}`}>
+                                    {val}
+                                </span>
+                                <div 
+                                    className="w-full max-w-[20px] rounded-t-full bar-glow relative overflow-hidden"
+                                    style={{ 
+                                        height: `${height}%`, 
+                                        backgroundColor: colors[i % colors.length],
+                                        color: colors[i % colors.length],
+                                        opacity: val === 0 ? 0.1 : 1
+                                    }}
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                                </div>
+                                <span className="text-[8px] font-bold text-slate-500 whitespace-nowrap rotate-[-45deg] origin-right mt-2">{labels[i]}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const URLS = {
+                muna: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4FTaWXDH1QoD90YJAxWOmVh6D7xuyfm6xfGftbzGvQ4prkZIuuB0nrmZJ3n0S8MsJn5vHZHAswoaP/pub?gid=1099096426&single=true&output=csv",
+                arafat: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGZ5fhuatBg7XaKuONlT0LX4Aagu4POJHCPiyDVS2_UyKIq04Itj2lLt1XCKJjpWfDed3JoXnWBTil/pub?gid=818169801&single=true&output=csv",
+                admin: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUOdo0dr8lTA7HXUgX8-gQGwxc_8acqFd74sFMsZluu8R-uAsyw4wmifW9Y3iQld9wC47rHq3_mn_t/pub?gid=0&single=true&output=csv" 
+            };
+
+            const [activeTab, setActiveTab] = useState('muna'); 
+            const [data, setData] = useState({ muna: [], arafat: [], admin: [] });
+            const [loading, setLoading] = useState(true);
+            const [lastUpdate, setLastUpdate] = useState('');
+            const [search, setSearch] = useState('');
+            const [activeSubFilter, setActiveSubFilter] = useState('water');
+
+            const fetchAll = async (silent = false) => {
+                if (!silent) setLoading(true);
+                try {
+                    const timestamp = Date.now();
+                    const [rM, rA, rAdmin] = await Promise.all([
+                        fetch(`${URLS.muna}&t=${timestamp}`).then(r => r.text()),
+                        fetch(`${URLS.arafat}&t=${timestamp}`).then(r => r.text()),
+                        fetch(`${URLS.admin}&t=${timestamp}`).then(r => r.text())
+                    ]);
+                    setData({ muna: parseCsv(rM, 'muna'), arafat: parseCsv(rA, 'arafat'), admin: parseCsv(rAdmin, 'admin') });
+                    setLastUpdate(new Date().toLocaleTimeString('ar-SA'));
+                } catch (e) { console.error(e); } finally { setLoading(false); }
+            };
+
+            const parseCsv = (csv, type) => {
+                if(!csv || csv.length < 50) return [];
+                const lines = csv.split(/\r?\n/).slice(1);
+                return lines.map(line => {
+                    const col = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    if (col.length < 5) return null;
+                    const clean = (v) => v ? v.replace(/"/g, '').trim() : "";
+                    
+                    if(type === 'muna') return { 
+                        id: clean(col[0]).match(/\d+/)?.[0] || "?", name: clean(col[3]), observer: clean(col[2]), time: clean(col[1]), note: clean(col[14]),
+                        water: clean(col[9]), waterImg: clean(col[10]),
+                        electricity: clean(col[8]), electricityImg: clean(col[8]),
+                        appliances: clean(col[10]), appliancesImg: clean(col[11]),
+                        tools: clean(col[12]), toolsImg: clean(col[13]),
+                        floors: clean(col[6]), floorsImg: clean(col[7]),
+                        phone: clean(col[16]) 
+                    };
+                    if(type === 'arafat') return { 
+                        id: clean(col[0]).split(' - ')[0] || "?", name: clean(col[0]).split(' - ')[1] || clean(col[0]), observer: clean(col[2]), time: clean(col[1]), status: clean(col[6]), note: clean(col[10]),
+                        pots: clean(col[11]), potsImg: clean(col[12]),
+                        tables: clean(col[13]), tablesImg: clean(col[14]),
+                        floors: clean(col[15]), floorsImg: clean(col[16]),
+                        water: clean(col[17]), waterImg: clean(col[18]),
+                        phone: clean(col[16]) 
+                    };
+                    if(type === 'admin') return { 
+                        id: clean(col[6]) || "?", name: clean(col[1]), phone: clean(col[16]), officer: clean(col[15]),
+                        liaison: (clean(col[13]).includes('المالك') || clean(col[14]).length > 2),
+                        kerosene: (clean(col[17]).includes('استلام') || clean(col[18]).length > 2),
+                        commitment: (clean(col[20]).includes('التعبئة') || clean(col[21]).length > 2)
+                    };
+                }).filter(i => i);
+            };
+
+            useEffect(() => { fetchAll(); }, []);
+
+            useEffect(() => { 
+                if (activeTab === 'muna') setActiveSubFilter('water');
+                else if (activeTab === 'arafat') setActiveSubFilter('closed');
+                else setActiveSubFilter('liaison');
+            }, [activeTab]);
+
+            const stats = useMemo(() => {
+                return {
+                    muna: [data.muna.filter(d=>d.water.includes('لا')).length, data.muna.filter(d=>d.electricity.includes('لا')).length, data.muna.filter(d=>d.appliances.includes('لا')).length, data.muna.filter(d=>d.tools.includes('لا')).length, data.muna.filter(d=>d.floors.includes('لا')).length],
+                    arafat: [data.arafat.filter(d=>d.status.includes('مغلق')).length, data.arafat.filter(d=>d.water.includes('لا')).length, data.arafat.filter(d=>d.pots.includes('لا')).length, data.arafat.filter(d=>d.tables.includes('لا')).length, data.arafat.filter(d=>d.floors.includes('لا')).length],
+                    admin: [data.admin.filter(d=>!d.liaison).length, data.admin.filter(d=>!d.kerosene).length, data.admin.filter(d=>!d.commitment).length]
+                };
+            }, [data]);
+
+            const filteredData = useMemo(() => {
+                let base = [];
+                const query = search.toLowerCase();
+                if (activeTab === 'muna') base = data.muna.filter(d => d[activeSubFilter]?.includes('لا'));
+                else if (activeTab === 'arafat') base = data.arafat.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
+                else base = data.admin.filter(d => !d[activeSubFilter]);
+                if (!search) return base;
+                return base.filter(d => d.name?.toLowerCase().includes(query) || d.id?.includes(query));
+            }, [activeTab, data, activeSubFilter, search]);
+
+            const chartConfig = {
+                muna: { labels: ['مياه', 'كهرباء', 'أجهزة', 'أدوات', 'أرضية'], data: stats.muna, colors: ['#60a5fa', '#fbbf24', '#c084fc', '#fb923c', '#4ade80'] },
+                arafat: { labels: ['مغلق', 'مياه', 'قدور', 'طاولات', 'أرضية'], data: stats.arafat, colors: ['#f87171', '#22d3ee', '#34d399', '#818cf8', '#2dd4bf'] },
+                admin: { labels: ['ضابط', 'كيروسين', 'تعهد'], data: stats.admin, colors: ['#a78bfa', '#22d3ee', '#f472b6'] }
+            };
+
+            const formatPhoneForWhatsApp = (num) => {
+                if(!num) return "";
+                let clean = num.replace(/\D/g, '');
+                if(clean.startsWith('05')) return "966" + clean.substring(1);
+                if(clean.startsWith('5')) return "966" + clean;
+                return clean;
+            };
+
+            const StatusRow = ({ label, value, img }) => {
+                const isFail = typeof value === 'string' ? value.includes('لا') : !value;
+                const isPass = typeof value === 'string' ? (value.includes('نعم') || value.includes('مفتوح')) : !!value;
+                return (
+                    <div className="detail-row">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-1.5 h-1.5 rounded-full ${isFail ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : isPass ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-500'}`}></div>
+                            <span className="text-[11px] font-medium text-slate-300">{label}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {img && img !== '---' && (
+                                <a href={img.match(/https?:\/\/[^\s,]+/)?.[0]} target="_blank" className="text-[10px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                                    المرفق
+                                </a>
+                            )}
+                            <span className={`text-[10px] font-black ${isFail ? 'text-rose-400' : isPass ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                {isPass ? 'مكتمل' : isFail ? 'متعثر' : '---'}
+                            </span>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <header className="sticky top-0 z-[100] glass-nav px-6 py-5 flex justify-between items-center shadow-2xl">
+                        <div className="flex items-center gap-4 text-right">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-blue-500 blur-lg opacity-20"></div>
+                                <div className="relative bg-slate-800 p-2.5 rounded-xl border border-white/10 shadow-2xl">
+                                    <Icon name="shield-check" color="text-blue-400" className="w-6 h-6" />
+                                </div>
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-black tracking-tight text-white leading-none mb-1.5">مرصد المشاعر</h1>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{lastUpdate || 'Updating...'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={() => fetchAll()} className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all tap-active border border-white/5">
+                            <Icon name="refresh-cw" color="text-white" className="w-5 h-5" />
+                        </button>
+                    </header>
+
+                    {loading && (
+                        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+                            <p className="mt-6 text-[10px] font-black text-blue-500 uppercase tracking-[0.4em]">Syncing Terminal...</p>
+                        </div>
+                    )}
+
+                    <main className="px-5 py-8 space-y-10 animate-card">
+                        
+                        <section className="glass-card rounded-[2.5rem] p-7 border-t border-white/10">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Icon name="activity" color="text-blue-500" className="w-4 h-4" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Operational Health Index</span>
+                                </div>
+                                <span className="bg-blue-500/10 text-blue-400 text-[9px] font-black px-2 py-1 rounded-lg border border-blue-500/20 uppercase tracking-tighter">Live Monitor</span>
+                            </div>
+                            <MobileBarChart data={chartConfig[activeTab].data} labels={chartConfig[activeTab].labels} colors={chartConfig[activeTab].colors} />
+                        </section>
+
+                        <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 px-1">
+                            {activeTab === 'muna' && chartConfig.muna.labels.map((lbl, idx) => (
+                                <button key={idx} onClick={() => setActiveSubFilter(['water','electricity','appliances','tools','floors'][idx])} 
+                                        className={`min-w-[110px] p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 tap-active ${activeSubFilter === ['water','electricity','appliances','tools','floors'][idx] ? 'bg-blue-600 border-transparent shadow-[0_0_20px_rgba(59,130,246,0.4)] scale-105' : 'bg-slate-800/40 border-white/5'}`}>
+                                    <span className="text-2xl font-black text-white leading-none">{stats.muna[idx]}</span>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter text-center">{lbl}</span>
+                                </button>
+                            ))}
+                            {activeTab === 'arafat' && chartConfig.arafat.labels.map((lbl, idx) => (
+                                <button key={idx} onClick={() => setActiveSubFilter(['closed','water','pots','tables','floors'][idx])} 
+                                        className={`min-w-[110px] p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 tap-active ${activeSubFilter === ['closed','water','pots','tables','floors'][idx] ? 'bg-emerald-600 border-transparent shadow-[0_0_20px_rgba(16,185,129,0.4)] scale-105' : 'bg-slate-800/40 border-white/5'}`}>
+                                    <span className="text-2xl font-black text-white leading-none">{stats.arafat[idx]}</span>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter text-center">{lbl}</span>
+                                </button>
+                            ))}
+                            {activeTab === 'admin' && chartConfig.admin.labels.map((lbl, idx) => (
+                                <button key={idx} onClick={() => setActiveSubFilter(['liaison','kerosene','commitment'][idx])} 
+                                        className={`min-w-[110px] p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 tap-active ${activeSubFilter === ['liaison','kerosene','commitment'][idx] ? 'bg-purple-600 border-transparent shadow-[0_0_20px_rgba(139,92,246,0.4)] scale-105' : 'bg-slate-800/40 border-white/5'}`}>
+                                    <span className="text-2xl font-black text-white leading-none">{stats.admin[idx]}</span>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter text-center">{lbl}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                                <Icon name="search" color="text-blue-500" className="w-5 h-5 opacity-50" />
+                            </div>
+                            <input 
+                                type="text" 
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="بحث برقم المركز أو اسم المتعهد..." 
+                                class="w-full bg-slate-800/50 border border-white/10 rounded-2xl py-5 pr-14 pl-6 text-white font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all text-sm placeholder:text-slate-600 text-right" 
+                            />
+                        </div>
+
+                        <div className="space-y-6 pb-32">
+                            {filteredData.length > 0 ? filteredData.map((item, idx) => (
+                                <div key={idx} className="glass-card rounded-[2rem] p-6 border-r-4 border-blue-500 relative overflow-hidden animate-card text-right">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full"></div>
+                                    
+                                    <div className="flex justify-between items-start mb-5">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                <Icon name="clock" className="w-3 h-3" /> {item.time || 'INTERNAL'}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-1 items-end">
+                                            <div className="bg-slate-900/50 px-3 py-1 rounded-lg border border-white/5 w-fit">
+                                                <span className="text-[10px] font-black text-blue-400">UNIT ID: #{item.id}</span>
+                                            </div>
+                                            <h4 className="text-lg font-black text-white leading-tight mt-1">{item.name}</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-black/20 rounded-2xl p-4 border border-white/5 mb-6 text-right">
+                                        {activeTab === 'muna' && (
+                                            <div className="space-y-0.5">
+                                                <StatusRow label="إمدادات المياه" value={item.water} img={item.waterImg} />
+                                                <StatusRow label="الطاقة الكهربائية" value={item.electricity} img={item.electricityImg} />
+                                                <StatusRow label="الأجهزة والتركيب" value={item.appliances} img={item.appliancesImg} />
+                                                <StatusRow label="أدوات المتعهد" value={item.tools} img={item.toolsImg} />
+                                                <StatusRow label="جاهزية الأرضيات" value={item.floors} img={item.floorsImg} />
+                                            </div>
+                                        )}
+                                        {activeTab === 'arafat' && (
+                                            <div className="space-y-0.5">
+                                                <StatusRow label="حالة التشغيل" value={item.status} />
+                                                <StatusRow label="توفر القدور" value={item.pots} img={item.potsImg} />
+                                                <StatusRow label="توفر الطاولات" value={item.tables} img={item.tablesImg} />
+                                                <StatusRow label="المياه الميدانية" value={item.water} img={item.waterImg} />
+                                                <StatusRow label="الأرضيات" value={item.floors} img={item.floorsImg} />
+                                            </div>
+                                        )}
+                                        {activeTab === 'admin' && (
+                                            <div className="space-y-0.5">
+                                                <StatusRow label="ضابط الاتصال" value={item.liaison} />
+                                                <StatusRow label="شهادة الكيروسين" value={item.kerosene} />
+                                                <StatusRow label="ملف التعهد" value={item.commitment} />
+                                            </div>
+                                        )}
+                                        {item.observer && <div className="mt-3 pt-3 border-t border-white/5 text-[10px] font-bold text-slate-400">رصد بواسطة: {item.observer}</div>}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <a href={`tel:${item.phone || '0500000000'}`} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black transition-all border border-white/10 tap-active shadow-lg">
+                                            <Icon name="phone" className="w-4 h-4 text-blue-400" /> اتصال
+                                        </a>
+                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(item.phone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black shadow-lg tap-active">
+                                            <Icon name="message-square" className="w-4 h-4" /> واتساب
+                                        </a>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="py-20 text-center flex flex-col items-center opacity-30">
+                                    <Icon name="shield-check" color="text-slate-600" className="w-20 h-20 mb-4" />
+                                    <p className="text-slate-400 font-black tracking-[0.3em] uppercase">Sector Secured</p>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+
+                    <nav className="fixed bottom-6 left-6 right-6 z-[200] glass-nav h-20 rounded-3xl border border-white/10 flex items-center justify-around shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+                        <NavBtn id="muna" label="منى" icon="tent" active={activeTab} onClick={setActiveTab} color="text-blue-500" />
+                        <NavBtn id="arafat" label="عرفة" icon="map-pin" active={activeTab} onClick={setActiveTab} color="text-emerald-500" />
+                        <NavBtn id="admin" label="الملفات" icon="file-stack" active={activeTab} onClick={setActiveTab} color="text-purple-500" />
+                    </nav>
+                </div>
+            );
+        };
+
+        const NavBtn = ({ id, label, icon, active, onClick, color }) => (
+            <button onClick={() => { onClick(id); window.scrollTo(0,0); }} className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${active === id ? `${color} scale-110` : 'text-slate-500'}`}>
+                <div className={`p-2 rounded-xl transition-all ${active === id ? 'bg-white/5 shadow-inner' : ''}`}>
+                    <Icon name={icon} className="w-7 h-7" />
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${active === id ? 'opacity-100 text-white' : 'opacity-40'}`}>{label}</span>
+            </button>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
