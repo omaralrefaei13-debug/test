@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="مرصد 2026">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
     
     <title>مرصد المشاعر 2026 | Smart Dashboard Pro</title>
@@ -94,6 +95,11 @@
             50% { transform: scale(1.03); box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); }
             100% { transform: scale(1); }
         }
+
+        .heatmap-node {
+            transition: all 0.3s ease;
+        }
+        .heatmap-node:active { transform: scale(1.2); z-index: 10; }
     </style>
 </head>
 <body class="safe-area-bottom">
@@ -105,6 +111,17 @@
         const Icon = ({ name, color, className }) => {
             useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name, color]);
             return <i data-lucide={name} className={`${className} ${color}`}></i>;
+        };
+
+        const ImageModal = ({ url, onClose }) => {
+            if (!url) return null;
+            return (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-lg animate-in fade-in duration-300" onClick={onClose}>
+                    <button className="absolute top-6 left-6 text-white bg-white/10 p-3 rounded-full"><Icon name="x" className="w-6 h-6" /></button>
+                    <img src={url} className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl animate-in zoom-in duration-300" onClick={(e) => e.stopPropagation()} />
+                    <div className="absolute bottom-10 bg-black/40 backdrop-blur px-6 py-3 rounded-full text-white font-bold text-sm">معاينة الإثبات الميداني</div>
+                </div>
+            );
         };
 
         const ReadinessCircle = ({ percentage, label, colorClass }) => {
@@ -172,6 +189,7 @@
             const [lastUpdate, setLastUpdate] = useState('');
             const [search, setSearch] = useState('');
             const [activeSubFilter, setActiveSubFilter] = useState('all');
+            const [previewImage, setPreviewImage] = useState(null);
 
             const fetchAll = async (silent = false) => {
                 if (!silent) setLoading(true);
@@ -355,9 +373,12 @@
                         </div>
                         <div className="flex items-center gap-3">
                             {img && img !== '---' && (
-                                <a href={img.match(/https?:\/\/[^\s,]+/)?.[0]} target="_blank" className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-95 transition-transform shadow-sm">
-                                    المرفق
-                                </a>
+                                <button 
+                                    onClick={() => setPreviewImage(img.match(/https?:\/\/[^\s,]+/)?.[0])}
+                                    className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-95 transition-transform shadow-sm"
+                                >
+                                    عرض الإثبات
+                                </button>
                             )}
                             <span className={`text-[10px] font-black ${isFail ? 'text-rose-600' : isPass ? 'text-emerald-600' : 'text-slate-400'}`}>
                                 {isPass ? 'مكتمل' : isFail ? 'متعثر' : '---'}
@@ -371,7 +392,8 @@
                 <div className={`min-h-screen tab-${activeTab}`}>
                     <div className="vibrant-bg"></div>
 
-                    {/* Floating Refresh Button - bottom left */}
+                    <ImageModal url={previewImage} onClose={() => setPreviewImage(null)} />
+
                     <button 
                         onClick={() => fetchAll()} 
                         className="fixed bottom-28 left-6 z-[600] bg-blue-600 text-white p-4 rounded-full shadow-2xl tap-active border-4 border-white/20"
@@ -387,7 +409,6 @@
                                 <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest text-right">تزامن حي: {lastUpdate}</p>
                             </div>
                         </div>
-                        {/* Empty placeholder to maintain header spacing if needed, but button is removed */}
                         <div className="w-10"></div>
                     </header>
 
@@ -416,13 +437,38 @@
                             <ReadinessCircle percentage={stats.readiness} label="نسبة الجاهزية" colorClass={stats.readiness > 80 ? 'text-emerald-500' : stats.readiness > 50 ? 'text-amber-500' : 'text-rose-500'} />
                         </section>
 
+                        <section className="glass-card rounded-[2.5rem] p-6 border border-white overflow-hidden">
+                            <div className="flex items-center gap-2 mb-4 justify-start text-right">
+                                <Icon name="grid" color="text-slate-800" className="w-4 h-4" />
+                                <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">خريطة الجاهزية الرقمية (Heatmap)</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                {(data[activeTab] || []).map(unit => (
+                                    <div 
+                                        key={unit.id} 
+                                        onClick={() => scrollToUnit(unit.id)}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-black text-white shadow-sm cursor-pointer heatmap-node 
+                                        ${unit.failCount === 0 ? 'bg-emerald-500' : unit.failCount < 3 ? 'bg-amber-500 animate-pulse' : 'bg-rose-500 shadow-rose-200 shadow-md'}`}
+                                        title={unit.name}
+                                    >
+                                        {unit.id}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-4 flex justify-center gap-4 border-t border-slate-100 pt-4">
+                                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-slate-400 uppercase">جاهز</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div><span className="text-[9px] font-bold text-slate-400 uppercase">تعثر بسيط</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div><span className="text-[9px] font-bold text-slate-400 uppercase">تعثر حرج</span></div>
+                            </div>
+                        </section>
+
                         {criticalUnits.length > 0 && (
                             <section className="animate-in fade-in slide-in-from-right duration-500 text-right">
                                 <div className="flex items-center gap-2 mb-3 px-2 justify-start">
                                     <Icon name="bell-ring" color="text-rose-500" className="w-4 h-4 animate-bounce" />
                                     <span className="text-[11px] font-black text-rose-600 uppercase tracking-widest">تنبيهات حرجة ({activeTab === 'muna' ? 'منى' : activeTab === 'arafat' ? 'عرفة' : 'الملفات'})</span>
                                 </div>
-                                <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2">
+                                <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2 text-right">
                                     {criticalUnits.map(unit => (
                                         <div key={unit.id} onClick={() => scrollToUnit(unit.id)} className="min-w-[150px] bg-rose-500 text-white p-4 rounded-3xl shadow-lg shadow-rose-200 cursor-pointer tap-active">
                                             <div className="text-[10px] font-black opacity-80 mb-1 text-right">مركز #{unit.id}</div>
@@ -461,7 +507,10 @@
                                         <div className="bg-slate-900 text-white px-4 py-1.5 rounded-2xl text-[11px] font-black shadow-lg">#{item.id}</div>
                                         <div className="flex items-center gap-2 text-slate-400"><Icon name="clock" className="w-3.5 h-3.5" /><span className="text-[11px] font-bold uppercase">{item.time || 'INTERNAL'}</span></div>
                                     </div>
-                                    <h4 className="text-xl font-black text-slate-900 leading-tight mb-2 text-right">{item.name}</h4>
+                                    <div className="flex items-center justify-between gap-2 mb-2 text-right">
+                                        <h4 className="text-xl font-black text-slate-900 leading-tight text-right">{item.name}</h4>
+                                        {item.failCount >= 3 && <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-[9px] font-black whitespace-nowrap animate-pulse">أولوية قصوى</span>}
+                                    </div>
                                     
                                     <div className="flex flex-wrap gap-2 mb-4 text-right justify-start">
                                         <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 bg-blue-50 w-fit px-3 py-1 rounded-lg border border-blue-100">
@@ -480,7 +529,7 @@
                                                 <StatusRow label="المياه" value={item.water} img={item.waterImg} />
                                                 <StatusRow label="الكهرباء" value={item.electricity} img={item.electricityImg} />
                                                 <StatusRow label="الأجهزة" value={item.appliances} img={item.appliancesImg} />
-                                                <StatusRow label="الأدوات" value={item.tools} img={item.toolsImg} />
+                                                <StatusRow label="أدوات المتعهد" value={item.tools} img={item.toolsImg} />
                                                 <StatusRow label="الأرضيات" value={item.floors} img={item.floorsImg} />
                                             </div>
                                         )}
