@@ -11,7 +11,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
     
-    <title>مرصد المشاعر 2026 | Vibrant Dashboard</title>
+    <title>مرصد المشاعر 2026 | Accurate Dashboard</title>
 
     <!-- التقنيات -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -34,7 +34,6 @@
             overscroll-behavior-y: contain;
         }
 
-        /* Vibrant Glass Background Effects */
         .vibrant-bg {
             position: fixed;
             inset: 0;
@@ -70,7 +69,7 @@
         .bar-glow {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
             transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-            border-radius: 12px 12px 4px 4px;
+            border-radius: 8px 8px 3px 3px;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -85,18 +84,11 @@
 
         .detail-row:last-child { border-bottom: none; }
         
-        .tap-active:active {
-            transform: scale(0.96);
-            opacity: 0.9;
-        }
+        .tap-active:active { transform: scale(0.96); opacity: 0.9; }
 
-        .category-btn {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .category-btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        .shadow-vibrant {
-            box-shadow: 0 15px 30px -5px var(--tw-shadow-color);
-        }
+        .shadow-vibrant { box-shadow: 0 15px 30px -5px var(--tw-shadow-color); }
     </style>
 </head>
 <body class="safe-area-bottom">
@@ -114,11 +106,9 @@
             const maxValue = Math.max(...data, 5);
             return (
                 <div className="w-full h-64 flex items-end justify-between gap-3 px-2 pt-12 pb-4 relative text-right bg-slate-50/30 rounded-[2rem] border border-slate-100 shadow-inner">
-                    {/* Grid lines inside the chart */}
-                    <div className="absolute inset-0 flex flex-col justify-between py-12 px-6 pointer-events-none opacity-5">
+                    <div className="absolute inset-0 flex flex-col justify-between py-12 px-6 pointer-events-none opacity-5 text-right">
                         {[1, 2, 3, 4].map(i => <div key={i} className="w-full h-px bg-slate-900"></div>)}
                     </div>
-                    
                     {data.map((val, i) => {
                         const height = (val / maxValue) * 100;
                         return (
@@ -183,27 +173,22 @@
                     const col = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                     if (col.length < 5) return null;
                     const clean = (v) => v ? v.replace(/"/g, '').trim() : "";
+                    
                     const cleanId = (val) => {
                         const m = clean(val).match(/\d+/);
-                        return m ? m[0] : clean(val);
+                        return m ? m[0] : "";
                     };
 
                     if(type === 'muna') return { 
                         id: cleanId(col[0]), name: clean(col[3]), observer: clean(col[2]), time: clean(col[1]), note: clean(col[14]),
-                        water: clean(col[9]), waterImg: clean(col[10]),
-                        electricity: clean(col[8]), electricityImg: clean(col[8]),
-                        appliances: clean(col[10]), appliancesImg: clean(col[11]),
-                        tools: clean(col[12]), toolsImg: clean(col[13]),
-                        floors: clean(col[6]), floorsImg: clean(col[7]),
-                        phone: clean(col[16]) 
+                        water: clean(col[9]), waterImg: clean(col[10]), electricity: clean(col[8]), electricityImg: clean(col[8]),
+                        appliances: clean(col[10]), appliancesImg: clean(col[11]), tools: clean(col[12]), toolsImg: clean(col[13]),
+                        floors: clean(col[6]), floorsImg: clean(col[7]), phone: clean(col[16]) 
                     };
                     if(type === 'arafat') return { 
                         id: cleanId(col[0]), name: clean(col[0]).split(' - ')[1] || clean(col[0]), observer: clean(col[2]), time: clean(col[1]), status: clean(col[6]), note: clean(col[10]),
-                        pots: clean(col[11]), potsImg: clean(col[12]),
-                        tables: clean(col[13]), tablesImg: clean(col[14]),
-                        floors: clean(col[15]), floorsImg: clean(col[16]),
-                        water: clean(col[17]), waterImg: clean(col[18]),
-                        phone: clean(col[16]) 
+                        pots: clean(col[11]), potsImg: clean(col[12]), tables: clean(col[13]), tablesImg: clean(col[14]),
+                        floors: clean(col[15]), floorsImg: clean(col[16]), water: clean(col[17]), waterImg: clean(col[18]), phone: clean(col[16]) 
                     };
                     if(type === 'admin') return { 
                         id: cleanId(col[6]), name: clean(col[1]), phone: clean(col[16]), officer: clean(col[15]),
@@ -211,15 +196,19 @@
                         kerosene: (clean(col[17]).includes('استلام') || clean(col[18]).length > 2),
                         commitment: (clean(col[20]).includes('التعبئة') || clean(col[21]).length > 2)
                     };
-                }).filter(i => i);
+                }).filter(i => i && i.id !== ""); 
             };
 
-            const phoneMap = useMemo(() => {
+            const contractorInfoMap = useMemo(() => {
                 const map = {};
                 data.admin.forEach(item => {
-                    if (item.id) map[item.id] = item.phone;
+                    if (item.id) map[item.id] = { phone: item.phone, officer: item.officer };
                 });
-                return map;
+                const overrides = {
+                    "نعيمة": { phone: "0549550174", officer: "حمد محمد فلاته" },
+                    "الجمان": { phone: "0544180726", officer: "عبدالرحمن يحيى الأهدل" }
+                };
+                return { map, overrides };
             }, [data.admin]);
 
             useEffect(() => { fetchAll(); }, []);
@@ -238,23 +227,7 @@
                 };
             }, [data]);
 
-            const filteredData = useMemo(() => {
-                let base = [];
-                const query = search.toLowerCase();
-                if (activeTab === 'muna') base = data.muna.filter(d => d[activeSubFilter]?.includes('لا'));
-                else if (activeTab === 'arafat') base = data.arafat.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
-                else base = data.admin.filter(d => !d[activeSubFilter]);
-                if (!search) return base;
-                return base.filter(d => d.name?.toLowerCase().includes(query) || d.id?.includes(query));
-            }, [activeTab, data, activeSubFilter, search]);
-
-            const chartConfig = {
-                muna: { labels: ['مياه', 'كهرباء', 'أجهزة', 'أدوات', 'أرضية'], data: stats.muna, colors: ['#0ea5e9', '#f59e0b', '#8b5cf6', '#f97316', '#10b981'] },
-                arafat: { labels: ['مغلق', 'مياه', 'قدور', 'طاولات', 'أرضية'], data: stats.arafat, colors: ['#f43f5e', '#06b6d4', '#10b981', '#6366f1', '#14b8a6'] },
-                admin: { labels: ['ضابط', 'كيروسين', 'تعهد'], data: stats.admin, colors: ['#7c3aed', '#0891b2', '#be123c'] }
-            };
-
-            const filterSettings = {
+            const filterSettings = useMemo(() => ({
                 muna: [
                     { id: 'water', label: 'المياه', icon: 'droplets', count: stats.muna[0], bg: 'bg-sky-500' },
                     { id: 'electricity', label: 'الكهرباء', icon: 'zap', count: stats.muna[1], bg: 'bg-amber-500' },
@@ -274,11 +247,27 @@
                     { id: 'kerosene', label: 'الكيروسين', icon: 'fuel', count: stats.admin[1], bg: 'bg-blue-600' },
                     { id: 'commitment', label: 'ملف التعهد', icon: 'file-check', count: stats.admin[2], bg: 'bg-rose-600' }
                 ]
+            }), [stats]);
+
+            const filteredData = useMemo(() => {
+                let base = [];
+                const query = search.toLowerCase();
+                if (activeTab === 'muna') base = data.muna.filter(d => d[activeSubFilter]?.includes('لا'));
+                else if (activeTab === 'arafat') base = data.arafat.filter(d => activeSubFilter === 'closed' ? d.status?.includes('مغلق') : d[activeSubFilter]?.includes('لا'));
+                else base = data.admin.filter(d => !d[activeSubFilter]);
+                if (!search) return base;
+                return base.filter(d => d.name?.toLowerCase().includes(query) || d.id?.includes(query));
+            }, [activeTab, data, activeSubFilter, search]);
+
+            const chartConfig = {
+                muna: { labels: ['مياه', 'كهرباء', 'أجهزة', 'أدوات', 'أرضية'], data: stats.muna, colors: ['#0ea5e9', '#f59e0b', '#8b5cf6', '#f97316', '#10b981'] },
+                arafat: { labels: ['مغلق', 'مياه', 'قدور', 'طاولات', 'أرضية'], data: stats.arafat, colors: ['#f43f5e', '#06b6d4', '#10b981', '#6366f1', '#14b8a6'] },
+                admin: { labels: ['ضابط', 'كيروسين', 'تعهد'], data: stats.admin, colors: ['#7c3aed', '#0891b2', '#be123c'] }
             };
 
             const formatPhoneForWhatsApp = (num) => {
                 if(!num) return "";
-                let clean = num.replace(/\D/g, '');
+                let clean = num.toString().replace(/\D/g, '');
                 if(clean.startsWith('05')) return "966" + clean.substring(1);
                 if(clean.startsWith('5')) return "966" + clean;
                 return clean;
@@ -290,13 +279,13 @@
                 return (
                     <div className="detail-row">
                         <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isFail ? 'bg-rose-500' : isPass ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${isFail ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : isPass ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
                             <span className="text-[11px] font-bold text-slate-600">{label}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             {img && img !== '---' && (
                                 <a href={img.match(/https?:\/\/[^\s,]+/)?.[0]} target="_blank" className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 active:scale-90 transition-transform">
-                                    المرفق
+                                    الإثبات
                                 </a>
                             )}
                             <span className={`text-[10px] font-black ${isFail ? 'text-rose-600' : isPass ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -311,15 +300,12 @@
                 <div className={`min-h-screen tab-${activeTab}`}>
                     <div className="vibrant-bg"></div>
 
-                    {/* Navbar Top */}
                     <header className="sticky top-0 z-[100] glass-nav px-6 py-4 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-3">
-                            <div className="bg-slate-900 p-2.5 rounded-2xl shadow-lg">
-                                <Icon name="layout-grid" color="text-white" className="w-6 h-6" />
-                            </div>
+                            <div className="bg-slate-900 p-2.5 rounded-2xl shadow-lg"><Icon name="layout-grid" color="text-white" className="w-6 h-6" /></div>
                             <div>
-                                <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1">مرصد المشاعر</h1>
-                                <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1 text-right">مرصد المشاعر</h1>
+                                <div className="flex items-center gap-2 justify-start">
                                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lastUpdate || 'Syncing...'}</p>
                                 </div>
@@ -331,80 +317,68 @@
                     </header>
 
                     {loading && (
-                        <div className="fixed inset-0 bg-white/60 backdrop-blur-xl z-[200] flex flex-col items-center justify-center">
+                        <div className="fixed inset-0 bg-white/60 backdrop-blur-xl z-[200] flex flex-col items-center justify-center text-right">
                             <div className="w-14 h-14 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
                             <p className="mt-4 text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">Synchronizing Data</p>
                         </div>
                     )}
 
                     <main className="px-5 py-6 space-y-8 animate-card">
-                        
-                        {/* المكبر: Summary Analytics Card */}
-                        <section className="glass-card rounded-[3rem] p-8 border border-white relative">
+                        <section className="glass-card rounded-[3rem] p-8 border border-white relative text-right">
                             <div className="flex items-center justify-between mb-6 px-1">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-slate-900 rounded-xl shadow-lg">
-                                        <Icon name="bar-chart-3" color="text-white" className="w-5 h-5" />
-                                    </div>
+                                <div className="flex items-center gap-3 text-right">
+                                    <div className="p-2 bg-slate-900 rounded-xl shadow-lg"><Icon name="bar-chart-3" color="text-white" className="w-5 h-5" /></div>
                                     <span className="text-[13px] font-black text-slate-800 uppercase tracking-[0.1em]">تحليل الميدان الشامل</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="bg-emerald-100 text-emerald-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">بيان مباشر</span>
-                                </div>
+                                <div className="flex items-center gap-2"><span className="bg-emerald-100 text-emerald-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">بيان مباشر</span></div>
                             </div>
                             <MobileBarChart data={chartConfig[activeTab].data} labels={chartConfig[activeTab].labels} colors={chartConfig[activeTab].colors} />
                         </section>
 
-                        {/* Filter Hub */}
-                        <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2 px-1">
-                            {filterSettings[activeTab].map((item, idx) => (
-                                <button 
-                                    key={item.id} 
-                                    onClick={() => setActiveSubFilter(item.id)} 
-                                    className={`min-w-[110px] p-5 rounded-[2.2rem] border-2 transition-all flex flex-col items-center gap-2 tap-active category-btn shadow-vibrant
-                                        ${activeSubFilter === item.id 
-                                            ? `${item.bg} border-transparent text-white scale-105 shadow-color-[rgba(0,0,0,0.1)]` 
-                                            : 'bg-white border-slate-100 text-slate-400 shadow-transparent'}`}
-                                >
+                        <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2 px-1 text-right">
+                            {(filterSettings[activeTab] || []).map((item) => (
+                                <button key={item.id} onClick={() => setActiveSubFilter(item.id)} className={`min-w-[110px] p-5 rounded-[2.2rem] border-2 transition-all flex flex-col items-center gap-2 tap-active category-btn shadow-vibrant ${activeSubFilter === item.id ? `${item.bg} border-transparent text-white scale-105 shadow-color-[rgba(0,0,0,0.1)]` : 'bg-white border-slate-100 text-slate-400 shadow-transparent'}`}>
                                     <span className="text-3xl font-black leading-none">{item.count}</span>
                                     <span className="text-[10px] font-black uppercase text-center tracking-tighter">{item.label}</span>
                                 </button>
                             ))}
                         </div>
 
-                        {/* Search */}
                         <div className="relative group">
-                            <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none">
-                                <Icon name="search" color="text-slate-400" className="w-5 h-5" />
-                            </div>
-                            <input 
-                                type="text" 
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="رقم المركز، المتعهد، أو المراقب..." 
-                                class="w-full bg-white border border-slate-200 rounded-[2rem] py-6 pr-16 pl-6 text-slate-900 font-bold outline-none focus:ring-8 focus:ring-blue-500/5 focus:border-blue-500 transition-all text-sm shadow-sm text-right" 
-                            />
+                            <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none"><Icon name="search" color="text-slate-400" className="w-5 h-5" /></div>
+                            <input type="text" onChange={(e) => setSearch(e.target.value)} placeholder="رقم المركز، المتعهد، أو المراقب..." class="w-full bg-white border border-slate-200 rounded-[2rem] py-6 pr-16 pl-6 text-slate-900 font-bold outline-none focus:ring-8 focus:ring-blue-500/5 focus:border-blue-500 transition-all text-sm shadow-sm text-right" />
                         </div>
 
-                        {/* Operational Feed */}
                         <div className="space-y-6 pb-32">
                             {filteredData.length > 0 ? filteredData.map((item, idx) => {
-                                const targetPhone = phoneMap[item.id] || item.phone;
-                                
+                                let targetOfficer = "غير مسجل";
+                                let targetPhone = item.phone || "";
+
+                                if (item.name.includes("نعيمة")) {
+                                    targetOfficer = contractorInfoMap.overrides["نعيمة"].officer;
+                                    targetPhone = contractorInfoMap.overrides["نعيمة"].phone;
+                                } else if (item.name.includes("الجمان")) {
+                                    targetOfficer = contractorInfoMap.overrides["الجمان"].officer;
+                                    targetPhone = contractorInfoMap.overrides["الجمان"].phone;
+                                } else if (contractorInfoMap.map[item.id]) {
+                                    targetOfficer = contractorInfoMap.map[item.id].officer;
+                                    targetPhone = contractorInfoMap.map[item.id].phone;
+                                }
+
                                 return (
                                 <div key={idx} className="glass-card rounded-[2.5rem] p-7 border-r-[10px] border-slate-900 relative overflow-hidden animate-card text-right">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-900/5 blur-3xl rounded-full"></div>
-                                    
                                     <div className="flex justify-between items-start mb-5">
                                         <div className="bg-slate-900 text-white px-4 py-1.5 rounded-2xl text-[11px] font-black shadow-lg">#{item.id}</div>
-                                        <div className="flex items-center gap-2 text-slate-400">
-                                            <Icon name="clock" className="w-3.5 h-3.5" />
-                                            <span className="text-[11px] font-bold uppercase">{item.time || 'DATA FEED'}</span>
-                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-400"><Icon name="clock" className="w-3.5 h-3.5" /><span className="text-[11px] font-bold uppercase">{item.time || 'DATA FEED'}</span></div>
                                     </div>
-                                    
-                                    <h4 className="text-xl font-black text-slate-900 leading-tight mb-5">{item.name}</h4>
+                                    <h4 className="text-xl font-black text-slate-900 leading-tight mb-2">{item.name}</h4>
+                                    <div className="flex items-center gap-2 mb-4 text-[10px] font-black text-indigo-600 bg-indigo-50 w-fit px-3 py-1 rounded-lg border border-indigo-100">
+                                        <Icon name="user-check" className="w-3.5 h-3.5" />
+                                        <span>ضابط الاتصال: {targetOfficer}</span>
+                                    </div>
 
-                                    <div className="bg-slate-50/70 rounded-3xl p-5 border border-slate-100 mb-6 shadow-inner">
+                                    <div className="bg-slate-50/70 rounded-3xl p-5 border border-slate-100 mb-6 shadow-inner text-right">
                                         {activeTab === 'muna' && (
                                             <div className="space-y-1">
                                                 <StatusRow label="المياه" value={item.water} img={item.waterImg} />
@@ -434,10 +408,10 @@
                                     </div>
 
                                     <div className="flex gap-4">
-                                        <a href={`tel:${targetPhone || ''}`} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-slate-200 transition-all">
+                                        <a href={`tel:${targetPhone || ''}`} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-slate-200">
                                             <Icon name="phone" className="w-5 h-5 text-blue-400" /> اتصال مباشر
                                         </a>
-                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(targetPhone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-emerald-100 transition-all">
+                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(targetPhone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl flex items-center justify-center gap-3 text-[12px] font-black tap-active shadow-xl shadow-emerald-100">
                                             <Icon name="send" className="w-5 h-5" /> واتساب
                                         </a>
                                     </div>
@@ -452,7 +426,6 @@
                         </div>
                     </main>
 
-                    {/* Floating Bottom Navigation */}
                     <nav className="fixed bottom-6 left-6 right-6 z-[200] glass-nav h-20 rounded-[2.5rem] border border-white flex items-center justify-around shadow-2xl">
                         <NavBtn id="muna" label="منى" icon="tent" active={activeTab} onClick={setActiveTab} color="text-blue-600" />
                         <NavBtn id="arafat" label="عرفة" icon="map-pin" active={activeTab} onClick={setActiveTab} color="text-emerald-600" />
@@ -463,10 +436,8 @@
         };
 
         const NavBtn = ({ id, label, icon, active, onClick, color }) => (
-            <button onClick={() => { onClick(id); window.scrollTo(0,0); }} className={`flex flex-col items-center gap-1 flex-1 transition-all tap-active ${active === id ? `${color} scale-110` : 'text-slate-400'}`}>
-                <div className={`p-2 rounded-xl transition-all ${active === id ? 'bg-slate-100 shadow-inner' : ''}`}>
-                    <Icon name={icon} className="w-7 h-7" />
-                </div>
+            <button onClick={() => { onClick(id); window.scrollTo(0,0); }} className={`flex flex-col items-center gap-1 flex-1 transition-all tap-active ${active === id ? `${color} scale-110` : 'text-slate-500'}`}>
+                <div className={`p-2 rounded-xl transition-all ${active === id ? 'bg-slate-100 shadow-inner' : ''}`}><Icon name={icon} className="w-7 h-7" /></div>
                 <span className={`text-[11px] font-black uppercase tracking-widest ${active === id ? 'opacity-100' : 'opacity-50'}`}>{label}</span>
             </button>
         );
