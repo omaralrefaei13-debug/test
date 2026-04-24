@@ -37,7 +37,6 @@
             -webkit-tap-highlight-color: transparent; 
             scroll-behavior: smooth; 
             overflow-x: hidden;
-            /* منع السحب لأسفل لتحديث الصفحة في الجوال لضمان تجربة التطبيق */
             overscroll-behavior-y: contain;
         }
 
@@ -78,7 +77,6 @@
 
         .detail-row:last-child { border-bottom: none; }
         
-        /* تحسين استجابة الأزرار للمس */
         .tap-active:active {
             transform: scale(0.95);
             opacity: 0.8;
@@ -99,7 +97,7 @@
         const MobileBarChart = ({ data, labels, colors }) => {
             const maxValue = Math.max(...data, 5);
             return (
-                <div className="w-full h-48 flex items-end justify-between gap-4 px-2 pt-10 pb-2 relative">
+                <div className="w-full h-48 flex items-end justify-between gap-4 px-2 pt-10 pb-2 relative text-right">
                     <div className="absolute inset-0 flex flex-col justify-between opacity-10 pointer-events-none py-8 px-4">
                         {[1, 2, 3].map(i => <div key={i} className="w-full h-px bg-white"></div>)}
                     </div>
@@ -192,6 +190,17 @@
                 }).filter(i => i);
             };
 
+            // ربط ذكي لأرقام الجوال من ملف الملفات الإدارية
+            const phoneMap = useMemo(() => {
+                const map = {};
+                data.admin.forEach(item => {
+                    if (item.id && item.id !== "?") {
+                        map[item.id] = item.phone;
+                    }
+                });
+                return map;
+            }, [data.admin]);
+
             useEffect(() => { fetchAll(); }, []);
 
             useEffect(() => { 
@@ -256,9 +265,9 @@
             };
 
             return (
-                <div className="min-h-screen">
+                <div className="min-h-screen text-right">
                     <header className="sticky top-0 z-[100] glass-nav px-6 py-5 flex justify-between items-center shadow-2xl">
-                        <div className="flex items-center gap-4 text-right">
+                        <div className="flex items-center gap-4">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-blue-500 blur-lg opacity-20"></div>
                                 <div className="relative bg-slate-800 p-2.5 rounded-xl border border-white/10 shadow-2xl">
@@ -267,7 +276,7 @@
                             </div>
                             <div>
                                 <h1 className="text-lg font-black tracking-tight text-white leading-none mb-1.5">مرصد المشاعر</h1>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 justify-start">
                                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{lastUpdate || 'Updating...'}</p>
                                 </div>
@@ -335,7 +344,11 @@
                         </div>
 
                         <div className="space-y-6 pb-32">
-                            {filteredData.length > 0 ? filteredData.map((item, idx) => (
+                            {filteredData.length > 0 ? filteredData.map((item, idx) => {
+                                // تحديد الرقم المستهدف (إما من خريطة الملفات الإدارية أو من بيانات الملف نفسه كخيار احتياطي)
+                                const targetPhone = (activeTab !== 'admin' && phoneMap[item.id]) ? phoneMap[item.id] : item.phone;
+                                
+                                return (
                                 <div key={idx} className="glass-card rounded-[2rem] p-6 border-r-4 border-blue-500 relative overflow-hidden animate-card text-right">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full"></div>
                                     
@@ -383,15 +396,16 @@
                                     </div>
 
                                     <div className="flex gap-3">
-                                        <a href={`tel:${item.phone || '0500000000'}`} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black transition-all border border-white/10 tap-active shadow-lg">
+                                        <a href={`tel:${targetPhone || '0500000000'}`} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black transition-all border border-white/10 tap-active shadow-lg">
                                             <Icon name="phone" className="w-4 h-4 text-blue-400" /> اتصال
                                         </a>
-                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(item.phone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black shadow-lg tap-active">
+                                        <a href={`https://wa.me/${formatPhoneForWhatsApp(targetPhone)}?text=نلاحظ وجود تعثر في مركزكم رقم ${item.id}، نأمل سرعة الإكمال.`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black shadow-lg tap-active">
                                             <Icon name="message-square" className="w-4 h-4" /> واتساب
                                         </a>
                                     </div>
                                 </div>
-                            )) : (
+                                );
+                            }) : (
                                 <div className="py-20 text-center flex flex-col items-center opacity-30">
                                     <Icon name="shield-check" color="text-slate-600" className="w-20 h-20 mb-4" />
                                     <p className="text-slate-400 font-black tracking-[0.3em] uppercase">Sector Secured</p>
